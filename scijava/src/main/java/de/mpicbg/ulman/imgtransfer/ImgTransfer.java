@@ -7,6 +7,7 @@
  */
 package de.mpicbg.ulman.imgtransfer;
 
+import de.mpicbg.ulman.transfer.AbstractTransfer;
 import net.imagej.ImgPlus;
 import net.imglib2.type.NativeType;
 
@@ -50,7 +51,7 @@ import java.util.StringTokenizer;
  * Their might come, if requested, a third sort that would be collecting
  * convenience functions to send/receive an array of images.
  */
-public class ImgTransfer
+public class ImgTransfer extends AbstractTransfer
 {
 // ------------------ static, single-image handling functions ------------------
 
@@ -831,39 +832,4 @@ public class ImgTransfer
 		return imgP;
 	}
 
-
-// ------------------ helper functions ------------------
-
-	/**
-	 * This is an internal helper function to poll socket for incoming data,
-	 * it reports progress of the polling too.
-	 *
-	 * Returns null if no data has arrived during the \e timeOut interval,
-	 * otherwise returns the data itself.
-	 */
-	private static byte[] waitForIncomingData(final ZMQ.Socket socket,
-		final String waiter, final int timeOut, final ProgressCallback log)
-	throws InterruptedException
-	{
-		//"an entry point" for the input data
-		byte[] incomingData = null;
-
-		//"busy wait" up to the given period of time
-		int timeAlreadyWaited = 0;
-		while (timeAlreadyWaited < timeOut && incomingData == null)
-		{
-			if (timeAlreadyWaited % 10 == 0 && timeAlreadyWaited > 0)
-				if (log != null) log.info(waiter+" waiting already " + timeAlreadyWaited + " seconds");
-
-			//check if there is some data from a sender
-			incomingData = socket.recv(ZMQ.NOBLOCK);
-
-			//if nothing found, wait a while before another checking attempt
-			if (incomingData == null) Thread.sleep(1000);
-
-			++timeAlreadyWaited;
-		}
-
-		return incomingData;
-	}
 }
