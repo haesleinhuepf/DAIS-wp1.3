@@ -21,7 +21,6 @@ public abstract class AbstractTransfer {
      */
     protected static byte[] waitForIncomingData(final ZMQ.Socket socket,
                                                 final String waiter, final int timeOut, final ProgressCallback log)
-            throws InterruptedException
     {
         //"an entry point" for the input data
         byte[] incomingData = null;
@@ -37,7 +36,13 @@ public abstract class AbstractTransfer {
             incomingData = socket.recv(ZMQ.NOBLOCK);
 
             //if nothing found, wait a while before another checking attempt
-            if (incomingData == null) Thread.sleep(1000);
+            if (incomingData == null) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
 
             ++timeAlreadyWaited;
         }

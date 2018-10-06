@@ -30,7 +30,7 @@ public class TextTransfer extends AbstractTransfer {
         ZMQ.Context zmqContext = ZMQ.context(1);
         ZMQ.Socket writerSocket = null;
         try {
-            writerSocket = zmqContext.socket(ZMQ.PAIR);
+            writerSocket = zmqContext.socket(ZMQ.REQ);
             if (writerSocket == null)
                 throw new Exception("cannot obtain local socket");
 
@@ -38,7 +38,36 @@ public class TextTransfer extends AbstractTransfer {
             writerSocket.connect(addr);
 
             //send the image
-            TextPacker.packAndSend(textP, writerSocket, timeOut, log);
+            String msg = new String("v1");
+
+            if (log != null) log.info("a");
+            //dimensionality data
+            msg += " dimNumber " + textP.length();
+            if (log != null) log.info("a");
+
+            //decipher the voxel type
+            msg += " String";
+
+            msg += " String ";
+            if (log != null) log.info("a");
+
+            //send header, metadata and text data afterwards
+            if (log != null) log.info("sending header: "+msg);
+            writerSocket.send(msg.getBytes(), 0);
+            //ArrayPacker.waitForFirstMessage(socket, timeOut);
+
+            msg = writerSocket.recvStr();
+            if (log != null) log.info("Received answer: " + msg);
+
+            if (log != null) log.info("sending the text...");
+            writerSocket.send(textP.getBytes(), 0);
+            //ArrayPacker.waitForFirstMessage(socket, timeOut);
+
+            msg = writerSocket.recvStr();
+            if (log != null) log.info("Received answer: " + msg);
+            if (! msg.startsWith("done"))
+                throw new RuntimeException("Protocol error, expected final confirmation from the receiver.");
+            if (log != null) log.info("sending finished...");
 
             if (log != null) log.info("sender finished");
         }
@@ -76,9 +105,9 @@ public class TextTransfer extends AbstractTransfer {
         ZMQ.Context zmqContext = ZMQ.context(1);
         ZMQ.Socket listenerSocket = null;
         try {
-            listenerSocket = zmqContext.socket(ZMQ.PAIR);
-            if (listenerSocket == null)
-                throw new Exception("cannot obtain local socket");
+            listenerSocket = zmqContext.socket(ZMQ.REP);
+            //if (listenerSocket == null)
+            //    throw new Exception("cannot obtain local socket");
 
             //port to listen for incoming data
             listenerSocket.bind("tcp://*:" + portNo);
@@ -89,7 +118,17 @@ public class TextTransfer extends AbstractTransfer {
 
             //process incoming data if there is some...
             if (incomingData != null) {
-                text = new String(waitForIncomingData(listenerSocket, "receiver", timeOut, log));
+                if (log != null) log.info("Received header2: " + new String(incomingData));
+                if (log != null) log.info("sending answer1");
+                listenerSocket.send("ready");
+                if (log != null) log.info("answer1 sent");
+                incomingData = waitForIncomingData(listenerSocket, "receiver", timeOut, log);
+                if (incomingData != null){
+                    text = new String(incomingData);
+                    if (log != null) log.info("sending answer2");
+                    listenerSocket.send("done");
+                    if (log != null) log.info("answer2 sent");
+                }
             }
             else
                 throw new RuntimeException("Image not transferred, sender has not connected yet.");
@@ -109,7 +148,11 @@ public class TextTransfer extends AbstractTransfer {
                 listenerSocket.unbind("tcp://*:" + portNo);
                 listenerSocket.close();
             }
+            //zmqContext.close();
+            //zmqContext.term();
         }
+        listenerSocket.unbind("tcp://*:" + portNo);
+        listenerSocket.close();
 
         return text;
     }
