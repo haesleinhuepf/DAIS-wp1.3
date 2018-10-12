@@ -64,17 +64,18 @@ public class ImgTransfer extends AbstractTransfer
 	public static <T extends NativeType<T>>
 	void sendImage(final ImgPlus<T> imgP, final String addr,
 	               final int timeOut, final ProgressCallback log)
-	throws IOException
+			throws Exception
 	{
 		if (log != null) log.info("sender started");
 
 		//init the communication side
 		ZMQ.Context zmqContext = ZMQ.context(1);
 		ZMQ.Socket writerSocket = null;
-		try {
-			writerSocket = zmqContext.socket(ZMQ.PAIR);
-			if (writerSocket == null)
+//		try {
+			writerSocket = zmqContext.socket(ZMQ.REQ);
+			if (writerSocket == null) {
 				throw new Exception("cannot obtain local socket");
+			}
 
 			//peer to send data out
 			writerSocket.connect(addr);
@@ -83,23 +84,23 @@ public class ImgTransfer extends AbstractTransfer
 			ImgPacker.packAndSend((ImgPlus) imgP, writerSocket, timeOut, log);
 
 			if (log != null) log.info("sender finished");
-		}
-		catch (ZMQException e) {
-			throw new IOException("sender crashed, ZeroMQ error: " + e.getMessage());
-		}
-		catch (Exception e) {
-			throw new IOException("sender error: " + e.getMessage());
-		}
-		finally {
-			if (log != null) log.info("sender cleaning");
-			if (writerSocket != null)
-			{
+//		}
+//		catch (ZMQException e) {
+//			throw new IOException("sender crashed, ZeroMQ error: " + e.getMessage());
+//		}
+//		catch (Exception e) {
+//			throw new IOException("sender error: " + e.getMessage());
+//		}
+//		finally {
+//			if (log != null) log.info("sender cleaning");
+//			if (writerSocket != null)
+//			{
 				writerSocket.disconnect(addr);
 				writerSocket.close();
-			}
-			//zmqContext.close();
-			//zmqContext.term();
-		}
+//			}
+//			//zmqContext.close();
+//			//zmqContext.term();
+//		}
 	}
 
 	/**
@@ -110,7 +111,7 @@ public class ImgTransfer extends AbstractTransfer
 	public static <T extends NativeType<T>>
 	void sendImage(final ImgPlus<T> imgP, final String addr,
 	               final int timeOut)
-	throws IOException
+			throws Exception
 	{ sendImage(imgP, addr, timeOut, null); }
 
 
@@ -131,7 +132,7 @@ public class ImgTransfer extends AbstractTransfer
 		ZMQ.Context zmqContext = ZMQ.context(1);
 		ZMQ.Socket listenerSocket = null;
 		try {
-			listenerSocket = zmqContext.socket(ZMQ.PAIR);
+			listenerSocket = zmqContext.socket(ZMQ.REP);
 			if (listenerSocket == null)
 				throw new Exception("cannot obtain local socket");
 
